@@ -7,7 +7,6 @@ from scrapy.spiders import CrawlSpider, Rule
 from scrapy.linkextractors import LinkExtractor  
 from scrapy.http import Request, FormRequest, HtmlResponse  
 
-
 class QuotesSpider(scrapy.Spider):
     name = "quotes"
 
@@ -55,12 +54,19 @@ class AuthorSpider(scrapy.Spider):
 
 class GithubSpider(scrapy.Spider):
     name = "github"
+    def crawl_myproj(self, response):
+        self.logger.info(response.status)
+        projects = response.xpath('//div[@class="d-inline-block mb-1"]/h3/a/text()').extract()
+        self.logger.info(response.url)
+        for proj in projects:
+            yield {
+                'project': proj.strip(),
+            } 
+    
     def after_login(self, response):  
-        self.logger.info(response.meta)
-#         self.logger.info(request.headers)
-        for url in self.start_urls:  
-            # 因为我们上面定义了Rule，所以只需要简单的生成初始爬取Request即可  
-            yield Request(url, meta={'cookiejar': response.meta['cookiejar']}) 
+        self.logger.info(response.status)
+        yield Request(url='https://github.com/eisscerav?tab=repositories',
+                      callback=self.crawl_myproj)
 
     def post_login(self, response):  
 # 先去拿隐藏的表单参数authenticity_token  
@@ -70,27 +76,39 @@ class GithubSpider(scrapy.Spider):
         return [FormRequest.from_response(response,  
                                   url='https://github.com/session',  
                                   meta={'cookiejar': response.meta['cookiejar']},  
-#                                   headers=self.post_headers,  # 注意此处的headers  
                                   formdata={  
                                       'utf8': '✓',  
                                       'login': 'eisscerav',  
-                                      'password': 'fanxin81102x',  
+                                      'password': 'fanxin811022',  
                                       'authenticity_token': authenticity_token  
                                   },  
                                   callback=self.after_login,  
-                                  dont_filter=True  
+#                                   dont_filter=True  
                                   )]
-#     start_urls = [r"https://github.com/login"]
+        
     def start_requests(self):  
         yield Request(r"https://github.com/login",  
                       meta={'cookiejar': 1}, 
                       callback=self.post_login)
-#     def parse(self, response):
-#         token = response.xpath("//input[@name='authenticity_token']/@value").extract_first()
-#         self.logger.info(token)
-#         self.logger.info(self.request.headers)
         
-
+class GithubGoogle(scrapy.Spider):
+    name = "githubgoogle"
+    def start_requests(self):
+        yield Request(r"https://github.com/google")
+        
+    def parse(self, response):
+        projects = response.xpath('//div[@class="d-inline-block mb-1"]/h3/a/text()').extract()
+        for p in projects:
+            yield {'project': p.strip()}
+        next_page = response.xpath('//a[@class="class"]/@href]').extract_first()
+        if next_page is not None:
+            next_page = response.urljoin(next_page)
+            yield scrapy.Request(next_page, callback=self.parse)
+                        
+class Iqianbang(scrapy.Spider):
+    name = "iqianbang"
+    def start_requests(self):
+        yield Request(r"http:")
 
         
 
